@@ -1,33 +1,56 @@
 const {response} = require('express');
+const User = require('../models/user');
+const {cryptPassword} = require("../helpers/db-validators");
 
-const userGet = (req, res = response) => {
-    const {name = 'No name', age = 0 } = req.query;
+const userGet = async (req, res = response) => {
+    const {limit = 5, from = 0} = req.query
+    const query = {state: true};
+    const [total, users] = await Promise.all([
+        User.count(query),
+        User.find(query)
+            .skip(Number(from))
+            .limit(Number(limit))
+    ])
     res.json({
-        msg: "get API - controlador",
-        name,
-        age: Number(age)
+        total,
+        users
     })
 }
-const userPut = (req, res = response) => {
+const userPut = async (req, res = response) => {
 
-    const id = Number(req.params.id);
+    const {id} = req.params;
 
-    res.json({
-        msg: "put API - controlador",
-        id
-    })
+    const {_id, password, google, email, ...r} = req.body;
+
+    if (password) {
+        r.password = cryptPassword(password)
+    }
+
+    const user = await User.findByIdAndUpdate(id, r);
+
+    res.json(user)
 }
-const userPost = (req, res = response) => {
-    const {name, age} = req.body;
+const userPost = async (req, res = response) => {
+
+    const {name, email, password, rol} = req.body;
+
+    const user = new User({name, email, password, rol});
+
+    user.password = cryptPassword(password)
+
+    await user.save();
 
     res.json({
         msg: "post API - controlador",
-        name, age
+        user
     })
 }
-const userDelete = (req, res = response) => {
-    res.json({
-        msg: "delete API - controlador"
+const userDelete = async (req, res = response) => {
+    const {id} = req.params;
+    //const user = User.findByIdAndDelete(id)
+    const user = await User.findByIdAndUpdate(id, {state: false})
+    await res.json({
+        user
     })
 }
 
